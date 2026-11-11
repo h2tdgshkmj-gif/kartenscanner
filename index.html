@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self' https://api.tcgdex.net; img-src 'self' blob: data: https://assets.tcgdex.net; style-src 'self'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#0E0F1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kartenscanner">
+<title>Kartenscanner</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 1 Start -->
+<main id="screen-start" class="screen">
+  <div class="brand">
+    <span class="foil-chip" aria-hidden="true"></span>
+    <span>KARTENSCANNER</span>
+  </div>
+  <div class="hero-stack" aria-hidden="true">
+    <div class="ghost-card left"></div>
+    <div class="ghost-card right"></div>
+    <div class="foil-frame hero-card">
+      <div class="hero-card-inner">
+        <div class="hero-art"></div>
+        <div class="bar w70"></div>
+        <div class="bar w90"></div>
+        <div class="bar w55"></div>
+        <div class="grow"></div>
+        <span class="eyebrow">SCAN BEREIT</span>
+      </div>
+    </div>
+  </div>
+  <div class="intro">
+    <h1>Was ist deine Karte wert?</h1>
+    <p class="muted">Halte eine deutsche Pokémon-Karte vor die Kamera. Der Preis kommt von Cardmarket.</p>
+  </div>
+  <div class="grow"></div>
+  <div class="stack">
+    <button type="button" class="btn foil" id="btn-start-scan">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 12h10"/></svg>
+      KARTE SCANNEN
+    </button>
+    <button type="button" class="btn ghost" id="btn-start-manual">Nummer selbst eingeben</button>
+  </div>
+  <p class="footnote">Kein Konto · keine Werbung · Fotos bleiben auf dem Handy<br><a href="datenschutz.html">So schützen wir deine Daten</a></p>
+</main>
+
+<!-- 2 Scannen -->
+<main id="screen-scan" class="screen scan" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="start" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="topbar-title">KARTE SCANNEN</span>
+    <span class="spacer"></span>
+  </div>
+  <div class="viewfinder" id="viewfinder">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="guide" id="guide">
+      <div class="guide-strip"></div>
+    </div>
+  </div>
+  <p class="scan-status" id="scan-status" role="status">Kamera startet …</p>
+  <p class="scan-hint">Nummer unten in den gelben Streifen. Helles Licht, keine Spiegelung, keine Hülle.</p>
+  <div class="shutter-row">
+    <span class="shutter-side"></span>
+    <button type="button" class="shutter" id="btn-shutter" aria-label="Foto aufnehmen" disabled><span></span></button>
+    <span class="shutter-side">
+      <label class="photo-btn" for="photo-input" aria-label="Mit der Kamera-App fotografieren">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="2"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg>
+        <span>Kamera-App</span>
+      </label>
+    </span>
+  </div>
+  <input type="file" id="photo-input" accept="image/*" capture="environment" class="visually-hidden">
+</main>
+
+<!-- Laden -->
+<main id="screen-busy" class="screen" hidden>
+  <div class="grow"></div>
+  <div class="busy">
+    <div class="spinner" aria-hidden="true"></div>
+    <p id="busy-text" role="status">Einen Moment …</p>
+  </div>
+  <div class="grow"></div>
+</main>
+
+<!-- Set auswählen -->
+<main id="screen-sets" class="screen" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="manual" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 class="h-small">Aus welchem Set?</h1>
+  </div>
+  <p class="muted" id="sets-intro">Vergleiche das kleine Set-Symbol auf deiner Karte.</p>
+  <ul class="set-list" id="set-list"></ul>
+</main>
+
+<!-- 3 Bestätigen -->
+<main id="screen-confirm" class="screen" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="start" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 class="h-small">Ist das deine Karte?</h1>
+  </div>
+  <div class="compare">
+    <figure id="fig-mine">
+      <div class="img-box"><img id="img-mine" alt="Dein Foto der Karte"></div>
+      <figcaption>Dein Scan</figcaption>
+    </figure>
+    <figure>
+      <div class="foil-frame thin"><div class="img-box"><img id="img-official" alt="Offizielles Kartenbild"></div></div>
+      <figcaption>Aus der Datenbank</figcaption>
+    </figure>
+  </div>
+  <div class="panel card-info">
+    <span class="card-name" id="confirm-name"></span>
+    <span class="muted" id="confirm-meta"></span>
+  </div>
+  <div class="stack" id="variant-block" hidden>
+    <div class="row-between">
+      <span class="label">Welche Version hast du?</span>
+      <button type="button" class="link-btn" id="btn-variant-help">Was ist das?</button>
+    </div>
+    <div class="segmented" role="radiogroup" aria-label="Version">
+      <button type="button" role="radio" aria-checked="true" id="variant-normal">Standard</button>
+      <button type="button" role="radio" aria-checked="false" id="variant-reverse">Reverse Holo</button>
+    </div>
+    <p class="help" id="variant-help" hidden>Bei <b>Reverse Holo</b> glitzert die ganze Karte, nur das Bild des Pokémon nicht. Bei <b>Standard</b> glitzert entweder nichts oder nur das Bild.</p>
+  </div>
+  <div class="grow"></div>
+  <div class="stack">
+    <button type="button" class="btn foil" id="btn-confirm-yes">JA, WERT ANZEIGEN</button>
+    <button type="button" class="btn ghost" id="btn-confirm-no">Nein, andere Karte wählen</button>
+  </div>
+</main>
+
+<!-- 4 Preis -->
+<main id="screen-price" class="screen" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="confirm" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="eyebrow">ERGEBNIS</span>
+  </div>
+  <div class="foil-frame big">
+    <div class="price-card">
+      <div class="price-head">
+        <div class="thumb"><img id="price-thumb" alt=""></div>
+        <div class="price-title">
+          <span class="card-name" id="price-name"></span>
+          <span class="muted small" id="price-meta"></span>
+          <span class="badge" id="price-variant"></span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div id="price-value">
+        <span class="eyebrow" id="price-label">KARTENWERT · 30 TAGE</span>
+        <span class="price-big" id="price-main"></span>
+        <span class="muted small" id="price-basis"></span>
+      </div>
+      <p class="muted" id="price-none" hidden>Für diese Karte gibt es gerade keinen Preis auf Cardmarket. Das passiert bei sehr neuen oder sehr seltenen Karten.</p>
+      <div class="tiles" id="price-details">
+        <div class="tile"><span class="tile-label">TREND</span><span class="tile-value" id="price-trend"></span></div>
+        <div class="tile"><span class="tile-label">7 TAGE</span><span class="tile-value" id="price-avg7"></span></div>
+        <div class="tile"><span class="tile-label">STAND</span><span class="tile-value" id="price-date"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="warn">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.5v.01"/></svg>
+    <p>Gilt für Karten in sehr gutem Zustand. Mit Knicken oder Kratzern ist sie meist weniger wert.</p>
+  </div>
+  <p class="footnote">Quelle: Cardmarket-Preise über TCGdex</p>
+  <div class="grow"></div>
+  <button type="button" class="btn foil" id="btn-next-scan">NÄCHSTE KARTE</button>
+</main>
+
+<!-- 5 Manuell / nicht erkannt -->
+<main id="screen-manual" class="screen" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="start" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 class="h-small" id="manual-title">Nummer eingeben</h1>
+  </div>
+  <div class="panel tips" id="manual-tips" hidden>
+    <p class="label">Das hilft meistens:</p>
+    <p class="muted">Mehr Licht, aber ohne Spiegelung</p>
+    <p class="muted">Karte aus der Schutzhülle nehmen</p>
+    <p class="muted">Nicht zu nah ran, Karte gerade und ruhig halten</p>
+    <p class="muted">Oder mit der Kamera-App fotografieren</p>
+    <button type="button" class="btn ghost" id="btn-rescan">Nochmal scannen</button>
+  </div>
+  <p class="error" id="manual-error" role="alert" hidden></p>
+  <form class="stack" id="manual-form" novalidate>
+    <p class="muted small">Beides steht unten auf der Karte, zum Beispiel „MEW DE 025/165“. Ältere Karten haben kein Kürzel, dann lass das Feld leer.</p>
+    <div class="fields">
+      <div class="field">
+        <label for="in-set">Set-Kürzel</label>
+        <input id="in-set" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="4" placeholder="MEW">
+      </div>
+      <div class="field">
+        <label for="in-number">Nummer</label>
+        <input id="in-number" type="text" autocomplete="off" inputmode="numeric" spellcheck="false" maxlength="9" placeholder="025/165">
+      </div>
+    </div>
+    <button type="submit" class="btn foil">KARTE SUCHEN</button>
+  </form>
+</main>
+
+<!-- Testmodus: nur mit ?debug in der Adresse sichtbar -->
+<section id="debug" class="debug" hidden>
+  <h2>Testmodus</h2>
+  <p class="muted small">Was die Texterkennung gesehen und gelesen hat. Wird nirgends gespeichert.</p>
+  <div id="debug-list"></div>
+</section>
+
+<script src="vendor/tesseract/tesseract.min.js"></script>
+<script src="sets.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
