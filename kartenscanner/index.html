@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self' https://api.tcgdex.net; img-src 'self' blob: data: https://assets.tcgdex.net; style-src 'self'; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#F5F6FA">
+<title>Kartenscanner</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 1 Start -->
+<main id="screen-start" class="screen light">
+  <div class="brand">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M8 17h8"/></svg>
+    <span>Kartenscanner</span>
+  </div>
+  <div class="hero">
+    <h1>Was ist deine Karte wert?</h1>
+    <p class="muted">Scanne eine deutsche Pokémon-Karte und sieh ihren aktuellen Preis auf Cardmarket.</p>
+  </div>
+  <div class="grow"></div>
+  <div class="stack">
+    <button type="button" class="btn primary big" id="btn-start-scan">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+      Karte scannen
+    </button>
+    <button type="button" class="btn secondary" id="btn-start-manual">Nummer selbst eingeben</button>
+  </div>
+  <div class="note">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+    <div>
+      <p>Kein Konto, keine Werbung. Fotos bleiben auf deinem Gerät.</p>
+      <a href="datenschutz.html">So schützen wir deine Daten</a>
+    </div>
+  </div>
+</main>
+
+<!-- 2 Scannen -->
+<main id="screen-scan" class="screen dark" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="start" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="topbar-title">Karte scannen</span>
+    <span class="spacer"></span>
+  </div>
+  <div class="viewfinder" id="viewfinder">
+    <video id="video" playsinline muted autoplay></video>
+    <div class="guide" id="guide">
+      <div class="guide-strip"></div>
+    </div>
+  </div>
+  <p class="scan-hint" id="scan-hint">Lege die Karte in den Rahmen. Gutes Licht und keine Schutzhülle helfen.</p>
+  <div class="shutter-row">
+    <button type="button" class="shutter" id="btn-shutter" aria-label="Foto aufnehmen" disabled><span></span></button>
+  </div>
+</main>
+
+<!-- Laden -->
+<main id="screen-busy" class="screen light" hidden>
+  <div class="grow"></div>
+  <div class="busy">
+    <div class="spinner" aria-hidden="true"></div>
+    <p id="busy-text" role="status">Einen Moment …</p>
+  </div>
+  <div class="grow"></div>
+</main>
+
+<!-- Set auswählen -->
+<main id="screen-sets" class="screen light" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="manual" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 class="h-small">Aus welchem Set?</h1>
+  </div>
+  <p class="muted" id="sets-intro">Vergleiche das kleine Set-Symbol auf deiner Karte.</p>
+  <ul class="set-list" id="set-list"></ul>
+</main>
+
+<!-- 3 Bestätigen -->
+<main id="screen-confirm" class="screen light" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="start" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 class="h-small">Ist das deine Karte?</h1>
+  </div>
+  <div class="compare">
+    <figure>
+      <div class="img-box dark-box"><img id="img-mine" alt="Dein Foto der Karte"></div>
+      <figcaption>Dein Scan</figcaption>
+    </figure>
+    <figure>
+      <div class="img-box"><img id="img-official" alt="Offizielles Kartenbild"></div>
+      <figcaption>Aus der Datenbank</figcaption>
+    </figure>
+  </div>
+  <div class="card-info">
+    <span class="card-name" id="confirm-name"></span>
+    <span class="muted" id="confirm-meta"></span>
+  </div>
+  <div class="stack" id="variant-block" hidden>
+    <div class="row-between">
+      <span class="label">Welche Version hast du?</span>
+      <button type="button" class="link-btn" id="btn-variant-help">Was ist das?</button>
+    </div>
+    <div class="segmented" role="radiogroup" aria-label="Version">
+      <button type="button" role="radio" aria-checked="true" id="variant-normal">Standard</button>
+      <button type="button" role="radio" aria-checked="false" id="variant-reverse">Reverse Holo</button>
+    </div>
+    <p class="help" id="variant-help" hidden>Bei <b>Reverse Holo</b> glitzert die ganze Karte, nur das Bild des Pokémon nicht. Bei der <b>Standard</b>-Version glitzert entweder nichts oder nur das Bild.</p>
+  </div>
+  <div class="grow"></div>
+  <div class="stack">
+    <button type="button" class="btn primary" id="btn-confirm-yes">Ja, Wert anzeigen</button>
+    <button type="button" class="btn secondary" id="btn-confirm-no">Nein, andere Karte wählen</button>
+  </div>
+</main>
+
+<!-- 4 Preis -->
+<main id="screen-price" class="screen light" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="confirm" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="title-stack">
+      <span class="card-name" id="price-name"></span>
+      <span class="muted small" id="price-meta"></span>
+    </div>
+  </div>
+  <div class="price-hero" id="price-hero">
+    <span class="price-pre">Deine Karte ist etwa</span>
+    <span class="price-big" id="price-main"></span>
+    <span class="price-post" id="price-basis"></span>
+  </div>
+  <div class="price-none" id="price-none" hidden>
+    <p>Für diese Karte gibt es gerade keinen Preis auf Cardmarket. Das passiert bei sehr neuen oder sehr seltenen Karten.</p>
+  </div>
+  <dl class="details" id="price-details">
+    <div><dt>Aktueller Trend</dt><dd id="price-trend"></dd></div>
+    <div><dt>Letzte 7 Tage</dt><dd id="price-avg7"></dd></div>
+    <div><dt>Preisstand</dt><dd id="price-date"></dd></div>
+  </dl>
+  <div class="warn">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16.5v.01"/></svg>
+    <p>Der Preis gilt für Karten in sehr gutem Zustand. Hat deine Karte Knicke oder Kratzer, ist sie meist weniger wert.</p>
+  </div>
+  <p class="source">Quelle: Cardmarket-Preise über TCGdex</p>
+  <div class="grow"></div>
+  <button type="button" class="btn dark-btn" id="btn-next-scan">Nächste Karte scannen</button>
+</main>
+
+<!-- 5 Manuell / nicht erkannt -->
+<main id="screen-manual" class="screen light" hidden>
+  <div class="topbar">
+    <button type="button" class="icon-btn" data-back="start" aria-label="Zurück">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <h1 class="h-small" id="manual-title">Nummer eingeben</h1>
+  </div>
+  <div class="note-plain" id="manual-tips" hidden>
+    <p class="label">Das hilft meistens:</p>
+    <p class="muted">Mehr Licht, aber ohne Spiegelung</p>
+    <p class="muted">Karte aus der Schutzhülle nehmen</p>
+    <p class="muted">Etwas näher ran, Karte gerade halten</p>
+    <button type="button" class="btn secondary" id="btn-rescan">Nochmal scannen</button>
+  </div>
+  <p class="error" id="manual-error" role="alert" hidden></p>
+  <form class="stack" id="manual-form" novalidate>
+    <p class="muted small">Beides steht unten links auf der Karte, zum Beispiel „MEW DE 025/165“. Ältere Karten haben kein Kürzel, dann lass das Feld leer.</p>
+    <div class="fields">
+      <div class="field">
+        <label for="in-set">Set-Kürzel</label>
+        <input id="in-set" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="4" placeholder="MEW">
+      </div>
+      <div class="field">
+        <label for="in-number">Nummer</label>
+        <input id="in-number" type="text" autocomplete="off" inputmode="numeric" spellcheck="false" maxlength="9" placeholder="025/165">
+      </div>
+    </div>
+    <button type="submit" class="btn primary">Karte suchen</button>
+  </form>
+</main>
+
+<script src="vendor/tesseract/tesseract.min.js"></script>
+<script src="sets.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
